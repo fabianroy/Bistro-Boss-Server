@@ -237,6 +237,34 @@ async function run() {
             res.send({ paymentResult, deleteResult });
         });
 
+        // stats 
+        app.get('/admin-stats', verifyToken, verifyAdmin, async (req, res) => {
+            const users = await userCollection.estimatedDocumentCount();
+            const menuItems = await menuCollection.estimatedDocumentCount();
+            const reviews = await reviewsCollection.estimatedDocumentCount();
+            const orders = await paymentCollection.estimatedDocumentCount();
+            const customers = await userCollection.estimatedDocumentCount();
+
+            // this is not the best way
+            // const payments = await paymentCollection.find().toArray();
+            // const revenue = payments.reduce((total, payment) => total + payment.amount, 0)
+
+            const result = await paymentCollection.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        totalRevenue: {
+                            $sum: '$amount'
+                        }
+                    }
+                }
+            ]).toArray();
+
+            const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+
+            res.send({ users, menuItems, reviews, orders, customers, revenue });
+        });
+
         console.log("Connected to MongoDB!");
     } catch (error) {
         console.error('Error connecting to MongoDB:', error);
